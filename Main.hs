@@ -24,12 +24,10 @@ main = do
     _ <- SDL.init SDL.initFlagEverything
     n <- getProgName
     w <- withCString n getWindow
-    GL.clearColor GL.$= GL.Color4 0 0 0 1
-    GL.viewport GL.$= (GL.Position 0 0, GL.Size 800 600)
     _ <- SDL.glCreateContext w
-    r <- SDL.createRenderer w (-1) SDL.rendererFlagAccelerated
-    _ <- SDL.setRenderDrawColor r 0 0 0 1
-    _ <- SDL.renderClear r
+--    r <- SDL.createRenderer w (-1) SDL.rendererFlagAccelerated
+--    _ <- SDL.setRenderDrawColor r 0 0 0 1
+--    _ <- SDL.renderClear r
     loop w
     SDL.quit
     putStrLn "Done"
@@ -69,19 +67,39 @@ interpretEvent e =
        _ -> Continue
 
 getWindow :: CString -> IO SDL.Window
-getWindow s = SDL.createWindow s SDL.windowPosUndefined SDL.windowPosUndefined  wWd wHt $ SDL.windowFlagResizable .|. SDL.windowFlagOpenGL
+getWindow s = do
+    w <- SDL.createWindow s SDL.windowPosUndefined SDL.windowPosUndefined  wWd wHt $ SDL.windowFlagResizable .|. SDL.windowFlagOpenGL
+    GL.depthFunc GL.$= Just GL.Less
+    GL.clearColor GL.$= GL.Color4 0 0 0 1
+    GL.viewport GL.$= (GL.Position 0 0, GL.Size 800 600)
+    GL.matrixMode GL.$= GL.Projection
+    GL.loadIdentity
+    GL.perspective 45 (800 / 600) 0.1 100
+    GL.matrixMode GL.$= GL.Modelview 0 
+    return w
 
 drawGL :: SDL.Window -> IO ()
 drawGL w = do
     GL.clear [GL.ColorBuffer,GL.DepthBuffer]
     GL.loadIdentity
-    GL.color $ GL.Color3 0.8 0.4 (0.9 :: GL.GLfloat)
-    GL.scale 0.7 0.7 (0.7 :: GL.GLfloat)
-    cube 0.3
+    GL.scale 0.5 0.5 (0.5 :: GL.GLfloat)
+    GL.color $ GL.Color3 1 0 (0 :: GL.GLfloat)
+    drawSquare 0.5
+    GL.rotate (45 :: GL.GLfloat) (GL.Vector3 1 0 0)
+    GL.color $ GL.Color3 0 1 (0 :: GL.GLfloat)
+    drawSquare 0.5
+    GL.rotate (45 :: GL.GLfloat) (GL.Vector3 0 1 0)
+    GL.color $ GL.Color3 0 0 (1 :: GL.GLfloat)
+    drawSquare 0.5
+  --  drawCube 0.3
     SDL.glSwapWindow w
 
-cube :: GL.GLfloat -> IO ()
-cube w = GL.renderPrimitive GL.Quads $ mapM_ vertex3f
+drawSquare :: GL.GLfloat -> IO ()
+drawSquare l = GL.renderPrimitive GL.Quads $ mapM_ vertex3f
+  [ (l,l,l), (l,l,-l), (l, -l, -l), (l, -l, l) ]
+
+drawCube :: GL.GLfloat -> IO ()
+drawCube w = GL.renderPrimitive GL.Quads $ mapM_ vertex3f
   [ ( w, w, w), ( w, w,-w), ( w,-w,-w), ( w,-w, w),
     ( w, w, w), ( w, w,-w), (-w, w,-w), (-w, w, w),
     ( w, w, w), ( w,-w, w), (-w,-w, w), (-w, w, w),
