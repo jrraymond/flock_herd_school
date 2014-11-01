@@ -2,17 +2,15 @@ module Main where
 
 --import GraphicsManager
 import Physics
-
+import Debug.Trace (trace)
 --import qualified Data.Vector as V
 import qualified Graphics.UI.SDL as SDL
-import qualified Graphics.Rendering.OpenGL as GL
 import System.Environment (getProgName)
 import Foreign.Marshal.Alloc
 import Foreign.C.String
 import Foreign.C.Types
 import Foreign.Storable
 import Control.Monad
-import Data.Bits
 
 wWd :: Foreign.C.Types.CInt
 wWd = 800
@@ -24,23 +22,48 @@ main = do
     _ <- SDL.init SDL.initFlagEverything
     n <- getProgName
     w <- withCString n getWindow
-    _ <- SDL.glCreateContext w
---    r <- SDL.createRenderer w (-1) SDL.rendererFlagAccelerated
---    _ <- SDL.setRenderDrawColor r 0 0 0 1
---    _ <- SDL.renderClear r
-    loop w
+    r <- SDL.createRenderer w (-1) SDL.rendererFlagAccelerated
+    print r
+    _ <- SDL.renderSetLogicalSize r 800 600
+    _ <- SDL.setRenderDrawColor r 0 0 0 255
+    _ <- SDL.renderClear r
+    _ <- SDL.renderPresent r
+    loop w r (Player 400 300 50 50)
     SDL.quit
     putStrLn "Done"
 
-loop :: SDL.Window -> IO ()
-loop w = do
-    drawGL w
+loop :: SDL.Window -> SDL.Renderer -> Player -> IO ()
+loop w r p = do
     ne <- Main.pollEvent
     case ne of
-        Quit -> return ()
-        Continue -> loop w
+        Quit           -> return ()
+        Move key -> let p' = move p key in render r p' >> loop w r p'
+        Continue       -> loop w r p
 
-data Event = Quit | Continue deriving (Eq, Show)
+move :: Player -> SDL.Scancode -> Player
+move p@(Player x y w h) key
+  | key == SDL.scancodeRight = Player (x + 1) y w h
+  | key == SDL.scancodeLeft  = Player (x - 1) y w h
+  | key == SDL.scancodeUp    = Player x (y - 1) w h
+  | key == SDL.scancodeDown  = Player x (y + 1) w h
+  | otherwise = p
+
+render :: SDL.Renderer -> Player -> IO ()
+render r (Player x y w h) = do
+    _ <- SDL.setRenderDrawColor r 0 0 0 255
+    _ <- SDL.renderClear r
+    _ <- SDL.setRenderDrawColor r 255 255 255 255 
+    _ <- drawRect r (Rect x y w h)
+    SDL.renderPresent r
+
+drawRect :: SDL.Renderer -> Rect -> IO CInt
+drawRect r (Rect x y w h) = alloca $ \f -> poke f (SDL.Rect x y w h) >> SDL.renderFillRect r f
+
+--drawPlayer :: SDL.Renderer -> Player -> Event -> IO ()
+--drawPlayer r (Player x y w h) m = SDL.renderFillRect r (SDL.Rect x y w h)  >> SDL.renderPresent r
+data Rect = Rect CInt CInt CInt CInt deriving (Eq, Show)
+data Player = Player CInt CInt CInt CInt deriving (Eq, Show)
+data Event = Quit | Continue | Move SDL.Scancode deriving (Eq, Show)
 
 
 {- alloca :: Storable a => (Ptr a -> IO b) -> IO b
@@ -61,54 +84,21 @@ pollEvent = alloca poll where
           _ -> return Continue
 
 interpretEvent :: SDL.Event -> Main.Event
-interpretEvent e = 
+interpretEvent e | trace (show e) False = undefined | otherwise = 
     case e of
-       SDL.QuitEvent _ _ -> Quit
-       _ -> Continue
-
+       SDL.QuitEvent _ _                                 -> Quit
+       SDL.KeyboardEvent _ _ _ _ _ (SDL.Keysym code _ _) -> Move code
+       _                                                 -> Continue
+--KeyboardEvent {eventType = 768
+--              , eventTimestamp = 16677
+--              , keyboardEventWindowID = 2
+--              , keyboardEventState = 1
+--              , keyboardEventRepeat = 0
+--              , keyboardEventKeysym = Keysym {keysymScancode = 44
+                              --              , keysymKeycode = 32
+                              --              , keysymMod = 0}}
 getWindow :: CString -> IO SDL.Window
-getWindow s = do
-    w <- SDL.createWindow s SDL.windowPosUndefined SDL.windowPosUndefined  wWd wHt $ SDL.windowFlagResizable .|. SDL.windowFlagOpenGL
-    GL.depthFunc GL.$= Just GL.Less
-    GL.clearColor GL.$= GL.Color4 0 0 0 1
-    GL.viewport GL.$= (GL.Position 0 0, GL.Size 800 600)
-    GL.matrixMode GL.$= GL.Projection
-    GL.loadIdentity
-    GL.perspective 45 (800 / 600) 0.1 100
-    GL.matrixMode GL.$= GL.Modelview 0 
-    return w
-
-drawGL :: SDL.Window -> IO ()
-drawGL w = do
-    GL.clear [GL.ColorBuffer,GL.DepthBuffer]
-    GL.loadIdentity
-    GL.scale 0.5 0.5 (0.5 :: GL.GLfloat)
-    GL.color $ GL.Color3 1 0 (0 :: GL.GLfloat)
-    drawSquare 0.5
-    GL.rotate (45 :: GL.GLfloat) (GL.Vector3 1 0 0)
-    GL.color $ GL.Color3 0 1 (0 :: GL.GLfloat)
-    drawSquare 0.5
-    GL.rotate (45 :: GL.GLfloat) (GL.Vector3 0 1 0)
-    GL.color $ GL.Color3 0 0 (1 :: GL.GLfloat)
-    drawSquare 0.5
-  --  drawCube 0.3
-    SDL.glSwapWindow w
-
-drawSquare :: GL.GLfloat -> IO ()
-drawSquare l = GL.renderPrimitive GL.Quads $ mapM_ vertex3f
-  [ (l,l,l), (l,l,-l), (l, -l, -l), (l, -l, l) ]
-
-drawCube :: GL.GLfloat -> IO ()
-drawCube w = GL.renderPrimitive GL.Quads $ mapM_ vertex3f
-  [ ( w, w, w), ( w, w,-w), ( w,-w,-w), ( w,-w, w),
-    ( w, w, w), ( w, w,-w), (-w, w,-w), (-w, w, w),
-    ( w, w, w), ( w,-w, w), (-w,-w, w), (-w, w, w),
-    (-w, w, w), (-w, w,-w), (-w,-w,-w), (-w,-w, w),
-    ( w,-w, w), ( w,-w,-w), (-w,-w,-w), (-w,-w, w),
-    ( w, w,-w), ( w,-w,-w), (-w,-w,-w), (-w, w,-w) ]
-
-vertex3f :: GL.VertexComponent a => (a, a, a) -> IO ()
-vertex3f (x, y ,z) = GL.vertex $ GL.Vertex3 x y z
+getWindow s = SDL.createWindow s SDL.windowPosUndefined SDL.windowPosUndefined  wWd wHt SDL.windowFlagResizable
 
 data Boid = Boid { _idBd :: !Int
                  , _posBd :: !V2
