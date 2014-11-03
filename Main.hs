@@ -7,35 +7,27 @@ import Vector2D
 --import qualified Data.Vector as V
 import qualified Graphics.UI.SDL as SDL
 import System.Environment (getProgName)
---import Foreign.Marshal.Alloc
-import Foreign.C.String
-import Foreign.C.Types
---import Foreign.Storable
---import Control.Monad
---import Data.Word
 
-wWd :: Foreign.C.Types.CInt
+wWd :: Int
 wWd = 800
-wHt :: Foreign.C.Types.CInt
+wHt :: Int
 wHt = 600
 
 data World = World { playerW :: !Player
                    , boidsW :: ![Boid]
                    , keysW :: !KeyState
                    } deriving Show
-data Player = Player { xP :: !CInt
-                     , yP :: !CInt
-                     , wP :: !CInt
-                     , hP :: !CInt
+data Player = Player { xP :: !Int
+                     , yP :: !Int
+                     , wP :: !Int
+                     , hP :: !Int
                      } deriving (Eq, Show)
 
 
-drawBoid :: SDL.Renderer -> Boid -> IO CInt
-drawBoid r (Boid _ (V2 x y) _) = let x' = floor x
-                                     y' = floor y
-                                 in drawRect r (Rect x' y' 5 5)
+drawBoid :: SDL.Renderer -> Boid -> IO ()
+drawBoid r (Boid _ (V2 x y) _) = drawRect r (Rect (floor x) (floor y) 5 5)
 
-drawBoid' :: SDL.Renderer -> Boid -> IO CInt
+drawBoid' :: SDL.Renderer -> Boid -> IO ()
 drawBoid' r (Boid _ (V2 px py) (V2 vx vy)) = do
     let px' = floor px
         py' = floor py
@@ -50,10 +42,10 @@ main :: IO ()
 main = do 
     _ <- SDL.init SDL.initFlagEverything
     n <- getProgName
-    w <- withCString n getWindow
+    w <- getWindow n wWd wHt
     r <- SDL.createRenderer w (-1) SDL.rendererFlagAccelerated
     print r
-    _ <- SDL.renderSetLogicalSize r wWd wHt
+    _ <- SDL.renderSetLogicalSize r (fromIntegral wWd) (fromIntegral wHt)
     _ <- SDL.setRenderDrawColor r 0 0 0 255
     _ <- SDL.renderClear r
     _ <- SDL.renderPresent r
@@ -75,8 +67,8 @@ loop w r world@(World p bs ks) = do
 move :: World -> World 
 move (World (Player x y wd ht) bs ks@(KeyState r l d u)) = World p' bs ks where
   p' = Player x' y' wd ht
-  x' | r = x + 1 | l = x - 1 | otherwise = x
-  y' | d = y + 1 | u = y - 1 | otherwise = y
+  x' | r = x + 5 | l = x - 5 | otherwise = x
+  y' | d = y + 5 | u = y - 5 | otherwise = y
 
 render :: SDL.Renderer -> World -> IO ()
 render r (World (Player x y w h) bs _) = do
@@ -89,8 +81,6 @@ render r (World (Player x y w h) bs _) = do
     SDL.renderPresent r
 
 
-getWindow :: CString -> IO SDL.Window
-getWindow s = SDL.createWindow s SDL.windowPosUndefined SDL.windowPosUndefined  wWd wHt SDL.windowFlagResizable
 
 
 boids :: [Boid]

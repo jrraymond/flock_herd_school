@@ -6,14 +6,15 @@ module GraphicsManager
   , updateKeys
   , drawRect
   , drawCircle
-  , drawVector ) where
+  , drawVector
+  , getWindow ) where
 
 import qualified Graphics.UI.SDL as SDL
 import Foreign.Marshal.Alloc
 import Foreign.Marshal.Array
---import Foreign.C.String
 import Foreign.C.Types
 import Foreign.Storable
+import Foreign.C.String
 import Control.Monad
 import Data.Word
 import Data.Angle
@@ -36,21 +37,35 @@ updateKeys ks@(KeyState r l d u) 769 key
   | otherwise = ks
 updateKeys ks _ _ = ks  
 
+toCInt :: Int -> CInt
+toCInt = fromIntegral
 
-drawCircle :: SDL.Renderer -> Double -> Double -> Double -> IO CInt
+getWindow :: String -> Int -> Int -> IO SDL.Window
+getWindow s w h = do
+    s' <- newCString s
+    SDL.createWindow s' SDL.windowPosUndefined SDL.windowPosUndefined (toCInt w) (toCInt h) SDL.windowFlagResizable
+
+drawCircle :: SDL.Renderer -> Double -> Double -> Double -> IO ()
 drawCircle r cx cy rad = do
   ps <- newArray $ zipWith (SDL.Point `on` floor) [ cx + rad * cosine a | a <- map Degrees [0..359 :: Double] ] [ cy + rad * sine a | a <- map Degrees [0..359 :: Double] ]
-  SDL.renderDrawPoints r ps 360
-  --withForeignPtr ps newArray
+  _ <- SDL.renderDrawPoints r ps 360
+  return ()
 
 
-drawVector :: SDL.Renderer -> CInt -> CInt -> CInt -> CInt -> IO CInt
-drawVector r px py vx vy = SDL.renderDrawLine r px py (px + vx) (py + vy)
+drawVector :: SDL.Renderer -> Int -> Int -> Int -> Int -> IO ()
+drawVector r px py vx vy = 
+    let p1x = toCInt px
+        p1y = toCInt py
+        p2x = p1x + toCInt vx
+        p2y = p1y + toCInt vy
+    in SDL.renderDrawLine r p1x p1y p2x p2y >> return ()
 
-drawRect :: SDL.Renderer -> Rect -> IO CInt
-drawRect r (Rect x y w h) = alloca $ \f -> poke f (SDL.Rect x y w h) >> SDL.renderFillRect r f
+drawRect :: SDL.Renderer -> Rect -> IO ()
+drawRect r (Rect x y w h) = 
+    let rect' = SDL.Rect (toCInt x) (toCInt y) (toCInt w) (toCInt h)
+    in alloca $ \f -> poke f rect' >> SDL.renderFillRect r f >> return ()
 
-data Rect = Rect CInt CInt CInt CInt deriving (Eq, Show)
+data Rect = Rect !Int !Int !Int !Int deriving (Eq, Show)
 data Event = Quit | Continue | Move Word32 SDL.Scancode deriving (Eq, Show)
 
 
