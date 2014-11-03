@@ -23,5 +23,7 @@ executable flocking-flocks
                      , sdl2 == 1.0.2
                      , OpenGL
                      , vector
+                     , AC-Angle
+                  
   -- hs-source-dirs:      
   default-language:    Haskell2010
