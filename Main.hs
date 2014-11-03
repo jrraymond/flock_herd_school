@@ -8,6 +8,38 @@ import Vector2D
 import qualified Graphics.UI.SDL as SDL
 import System.Environment (getProgName)
 
+
+main :: IO ()
+main = do 
+    _ <- SDL.init SDL.initFlagEverything
+    n <- getProgName
+    w <- getWindow n wWd wHt
+    r <- SDL.createRenderer w (-1) SDL.rendererFlagAccelerated
+    print r
+    _ <- SDL.renderSetLogicalSize r (fromIntegral wWd) (fromIntegral wHt)
+    _ <- SDL.setRenderDrawColor r 0 0 0 255
+    _ <- SDL.renderClear r
+    _ <- SDL.renderPresent r
+    loop w r (World (Player (wWd `div` 2) (wHt `div` 2) 10 10) boids (KeyState False False False False))
+    SDL.quit
+    putStrLn "Done"
+
+loop :: SDL.Window -> SDL.Renderer -> World -> IO ()
+loop w r world@(World p bs ks) = do
+    SDL.delay 50
+    SDL.flushEvents SDL.scancodeRight SDL.scancodeUp
+    ne <- pollEvent
+    case ne of
+        Quit           -> return ()
+        Move typ key   -> let bs' = step (fromIntegral wWd) (fromIntegral wHt) bs [V2 (fromIntegral (xP (playerW w'))) (fromIntegral (yP (playerW w')))]
+                              w' = move (World p bs' $ updateKeys ks typ key) 
+                          in render r w' >> loop w r w'
+        Continue       -> let bs' = step (fromIntegral wWd) (fromIntegral wHt) bs [V2 (fromIntegral (xP (playerW world))) (fromIntegral (yP (playerW world)))]
+                              w' = World p bs' ks
+                          in render r w' >> loop w r w'
+
+
+
 wWd :: Int
 wWd = 800
 wHt :: Int
@@ -37,36 +69,9 @@ drawBoid' r (Boid _ (V2 px py) (V2 vx vy)) = do
     _ <- drawCircle r px py nearC
     drawRect r (Rect px' py' 5 5)
 
-
-main :: IO ()
-main = do 
-    _ <- SDL.init SDL.initFlagEverything
-    n <- getProgName
-    w <- getWindow n wWd wHt
-    r <- SDL.createRenderer w (-1) SDL.rendererFlagAccelerated
-    print r
-    _ <- SDL.renderSetLogicalSize r (fromIntegral wWd) (fromIntegral wHt)
-    _ <- SDL.setRenderDrawColor r 0 0 0 255
-    _ <- SDL.renderClear r
-    _ <- SDL.renderPresent r
-    loop w r (World (Player (wWd `div` 2) (wHt `div` 2) 10 10) boids (KeyState False False False False))
-    SDL.quit
-    putStrLn "Done"
-
-loop :: SDL.Window -> SDL.Renderer -> World -> IO ()
-loop w r world@(World p bs ks) = do
-    ne <- pollEvent
-    case ne of
-        Quit           -> return ()
-        Move typ key   -> let bs' = step (fromIntegral wWd) (fromIntegral wHt) bs [V2 (fromIntegral (xP (playerW w'))) (fromIntegral (yP (playerW w')))]
-                              w' = move (World p bs' $ updateKeys ks typ key) 
-                          in render r w' >> loop w r w'
-        Continue       -> loop w r world
-
-
 move :: World -> World 
 move (World (Player x y wd ht) bs ks@(KeyState r l d u)) = World p' bs ks where
-  p' = Player x' y' wd ht
+  p' = Player (x' `mod` wWd) (y' `mod` wHt) wd ht
   x' | r = x + 5 | l = x - 5 | otherwise = x
   y' | d = y + 5 | u = y - 5 | otherwise = y
 
@@ -77,7 +82,7 @@ render r (World (Player x y w h) bs _) = do
     _ <- SDL.setRenderDrawColor r 255 255 255 255 
     _ <- drawRect r (Rect x y w h)
     _ <- SDL.setRenderDrawColor r 0 255 0 255 
-    _ <- mapM (drawBoid' r) bs
+    _ <- mapM (drawBoid r) bs
     SDL.renderPresent r
 
 

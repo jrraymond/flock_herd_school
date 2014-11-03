@@ -83,7 +83,7 @@ pollEvent = alloca poll where
     poll e = do
       r <- SDL.pollEvent e
       case r of 
-          1 -> liftM interpretEvent $ peek e
+          1 -> SDL.flushEvent SDL.eventTypeKeyDown >> liftM interpretEvent (peek e)
           _ -> return Continue
 
 interpretEvent :: SDL.Event -> Event

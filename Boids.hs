@@ -14,15 +14,17 @@ data Boid = Boid { _idBd :: !Int
 sepC :: Double
 sepC = 0.5
 alignC :: Double
-alignC = 1
+alignC = 2
 cohC :: Double
 cohC = 1
 nearC :: Double
-nearC = 20
+nearC = 50
 velMax :: Double
 velMax = 10
 avdC :: Double
 avdC = 0.5
+avdDst :: Double
+avdDst = 2 * nearC
 
 step :: Double -> Double -> [Boid] -> [V2] -> [Boid]
 step w h bs ps = map (stepBoid w h bs ps nearC) bs
@@ -36,7 +38,7 @@ stepBoid w h bs ps d b@(Boid i pos vel) = b' where
   sV = seperate (map (sub pos . _posBd) nears)
   aV = align (map _velBd nears)
   cV = coher (map _posBd nears) pos
-  xV = avoid (map (sub pos) (filter (\x -> mag2 (sub pos x) < d ** 2) ps))
+  xV = avoid (map (sub pos) (filter (\x -> mag2 (sub pos x) < avdDst ** 2) ps))
   v' = clamp velMax $ add5 sV aV cV vel xV
   b' = Boid i (wrap w h $ add pos v') v'
 
@@ -56,7 +58,7 @@ coher :: [V2] -> V2 -> V2
 coher ps pos = 
     case ps of
       [] -> V2 0 0 
-      _ -> scale cohC $ sub (getCenter ps) pos
+      _ -> scale cohC $ sub (getCenter (pos:ps)) pos
 
 {- Avoid Predators -}
 avoid :: [V2] -> V2
