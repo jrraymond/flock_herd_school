@@ -7,9 +7,12 @@ module GraphicsManager
   , drawRect
   , drawCircle
   , drawVector
-  , getWindow ) where
+  , getWindow
+  , drawStartMenu
+  ) where
 
 import qualified Graphics.UI.SDL as SDL
+import Foreign.ForeignPtr
 import Foreign.Marshal.Alloc
 import Foreign.Marshal.Array
 import Foreign.C.Types
@@ -44,6 +47,13 @@ getWindow :: String -> Int -> Int -> IO SDL.Window
 getWindow s w h = do
     s' <- newCString s
     SDL.createWindow s' SDL.windowPosUndefined SDL.windowPosUndefined (toCInt w) (toCInt h) SDL.windowFlagResizable
+
+drawStartMenu :: SDL.Renderer -> String -> Int -> Int -> IO ()
+drawStartMenu r s w h = do
+    _ <- SDL.setRenderDrawColor r 255 255 255 255
+    drawRect r (Rect 0 0 w h)
+    _ <- SDL.renderPresent r
+    SDL.delay 10000
 
 drawCircle :: SDL.Renderer -> Double -> Double -> Double -> IO ()
 drawCircle r cx cy rad = do

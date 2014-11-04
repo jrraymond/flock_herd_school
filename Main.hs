@@ -3,31 +3,41 @@ module Main where
 import GraphicsManager
 import Boids
 import Vector2D
+import Data.Maybe (listToMaybe)
+import System.Exit (exitSuccess)
 --import Debug.Trace (trace)
 --import qualified Data.Vector as V
 import qualified Graphics.UI.SDL as SDL
 import System.Environment (getProgName)
+import System.Random
 
 
 main :: IO ()
-main = do 
+main = do
+    putStrLn "Welcome to Flocks! Enter Q to exit otherwise it enter to continue"
+    q <- getLine
+    case q of 
+              "Q" -> exitSuccess 
+              _ -> return ()
+    opts <- getGameOpts
+    gen <- getStdGen
+    let boids = genRandomBoids gen wWd wHt (numBoidsOpt opts)
     _ <- SDL.init SDL.initFlagEverything
     n <- getProgName
     w <- getWindow n wWd wHt
     r <- SDL.createRenderer w (-1) SDL.rendererFlagAccelerated
-    print r
     _ <- SDL.renderSetLogicalSize r (fromIntegral wWd) (fromIntegral wHt)
     _ <- SDL.setRenderDrawColor r 0 0 0 255
     _ <- SDL.renderClear r
     _ <- SDL.renderPresent r
     loop w r (World (Player (wWd `div` 2) (wHt `div` 2) 10 10) boids (KeyState False False False False))
     SDL.quit
-    putStrLn "Done"
+    putStrLn "Game Over"
+    main
 
 loop :: SDL.Window -> SDL.Renderer -> World -> IO ()
 loop w r world@(World p bs ks) = do
     SDL.delay 50
-    SDL.flushEvents SDL.scancodeRight SDL.scancodeUp
     ne <- pollEvent
     case ne of
         Quit           -> return ()
@@ -37,8 +47,6 @@ loop w r world@(World p bs ks) = do
         Continue       -> let bs' = step (fromIntegral wWd) (fromIntegral wHt) bs [V2 (fromIntegral (xP (playerW world))) (fromIntegral (yP (playerW world)))]
                               w' = World p bs' ks
                           in render r w' >> loop w r w'
-
-
 
 wWd :: Int
 wWd = 800
@@ -86,48 +94,80 @@ render r (World (Player x y w h) bs _) = do
     SDL.renderPresent r
 
 
+getGameOpts :: IO Opts
+getGameOpts = do
+    putStrLn "Enter name:"
+    n <- getLine
+    putStrLn "Enable mouse? (T/F): "
+    m <- getLine
+    let m' = if head (m ++ " ") == 'T' then True else False -- hack to avoid partiality
+    putStrLn "Number of boids? (1-99): "
+    b <- getLine
+    let b' = case maybeReads b :: Maybe Int of
+               Nothing -> 10
+               Just i -> if i < 1 then 1 else if i > 99 then 99 else i
+    return $ Opts n m' b'
+
+genRandomBoids :: StdGen -> Int -> Int -> Int -> [Boid]
+genRandomBoids gen w h = f gen where
+  f _ 0 = []
+  f g i = let (px,g') = randomR (0,fromIntegral w) g
+              (py,g'') = randomR (0,fromIntegral h) g'
+              (vx,g''') = randomR (-2,2) g''
+              (vy,g'''') = randomR (-2,2) g'''
+          in Boid (i - 1) (V2 px py) (V2 vx vy) : f g'''' (i - 1)
 
 
-boids :: [Boid]
-boids = [ Boid 0  (V2 400 500) (V2   1    0.7 )
-        , Boid 1  (V2 301 401) (V2   1    1 )
-        , Boid 2  (V2 202 302) (V2   1    0 )
-        , Boid 3  (V2 503 203) (V2   1  (-1))
-        , Boid 4  (V2 604 104) (V2   0    1 )
-        , Boid 5  (V2 305 505) (V2   0    0 )
-        , Boid 6  (V2 206 406) (V2   0    1.5 )
-        , Boid 7  (V2 507 307) (V2   2    0 )
-        , Boid 8  (V2 608 208) (V2   0    2 )
-        , Boid 9  (V2 409 109) (V2   0    0.4 )
-        , Boid 10 (V2 310 510) (V2   2    2 )
-        , Boid 11 (V2 411 411) (V2   2    0 )
-        , Boid 12 (V2 212 312) (V2   1    2.3 )
-        , Boid 13 (V2 413 213) (V2   1    0 )
-        , Boid 14 (V2 514 114) (V2   2    1 )
-        , Boid 15 (V2 415 315) (V2   2    0.1 )
-        , Boid 16 (V2 616 216) (V2   2    1 )
-        , Boid 17 (V2 117 517) (V2 (-1)   0 )
-        , Boid 18 (V2 718 318) (V2 (-1) (-1))
-        , Boid 19 (V2 419 119) (V2 (-3)   1 )
-        , Boid 20 (V2 010 000) (V2   1    0.7 )
-        , Boid 21 (V2 029 401) (V2   1    1 )
-        , Boid 22 (V2 132 302) (V2   1    0 )
-        , Boid 23 (V2 043 203) (V2   1  (-1))
-        , Boid 24 (V2 154 104) (V2   0    1 )
-        , Boid 25 (V2 065 505) (V2   0    0 )
-        , Boid 26 (V2 176 406) (V2   0    1.5 )
-        , Boid 27 (V2 087 307) (V2   2    0 )
-        , Boid 28 (V2 198 208) (V2   0    2 )
-        , Boid 29 (V2 409 109) (V2   0    0.4 )
-        , Boid 30 (V2 310 510) (V2   2    2 )
-        , Boid 31 (V2 511 171) (V2   2    0 )
-        , Boid 32 (V2 612 192) (V2   1    2.3 )
-        , Boid 33 (V2 713 013) (V2   1    0 )
-        , Boid 34 (V2 314 114) (V2   2    1 )
-        , Boid 35 (V2 415 015) (V2   2    0.1 )
-        , Boid 36 (V2 516 216) (V2   2    1 )
-        , Boid 37 (V2 317 017) (V2 (-1)   0 )
-        , Boid 38 (V2 218 518) (V2 (-1) (-1))
-        , Boid 39 (V2 119 019) (V2 (-3)   1 )
-        ]
+maybeReads :: Read a => String -> Maybe a
+maybeReads = fmap fst . listToMaybe . reads
 
+
+data Opts = Opts { nameOpt :: !String
+                 , mouseOpt :: !Bool -- true to enable mouse, false to use arrow keys
+                 , numBoidsOpt :: !Int -- number of boids
+                 } deriving (Eq, Show)
+
+
+
+--boids :: [Boid]
+--boids = [ Boid 0  (V2 400 500) (V2   1    0.7 )
+--        , Boid 1  (V2 301 401) (V2   1    1 )
+--        , Boid 2  (V2 202 302) (V2   1    0 )
+--        , Boid 3  (V2 503 203) (V2   1  (-1))
+--        , Boid 4  (V2 604 104) (V2   0    1 )
+--        , Boid 5  (V2 305 505) (V2   0    0 )
+--        , Boid 6  (V2 206 406) (V2   0    1.5 )
+--        , Boid 7  (V2 507 307) (V2   2    0 )
+--        , Boid 8  (V2 608 208) (V2   0    2 )
+--        , Boid 9  (V2 409 109) (V2   0    0.4 )
+--        , Boid 10 (V2 310 510) (V2   2    2 )
+--        , Boid 11 (V2 411 411) (V2   2    0 )
+--        , Boid 12 (V2 212 312) (V2   1    2.3 )
+--        , Boid 13 (V2 413 213) (V2   1    0 )
+--        , Boid 14 (V2 514 114) (V2   2    1 )
+--        , Boid 15 (V2 415 315) (V2   2    0.1 )
+--        , Boid 16 (V2 616 216) (V2   2    1 )
+--        , Boid 17 (V2 117 517) (V2 (-1)   0 )
+--        , Boid 18 (V2 718 318) (V2 (-1) (-1))
+--        , Boid 19 (V2 419 119) (V2 (-3)   1 )
+--        , Boid 20 (V2 010 000) (V2   1    0.7 )
+--        , Boid 21 (V2 029 401) (V2   1    1 )
+--        , Boid 22 (V2 132 302) (V2   1    0 )
+--        , Boid 23 (V2 043 203) (V2   1  (-1))
+--        , Boid 24 (V2 154 104) (V2   0    1 )
+--        , Boid 25 (V2 065 505) (V2   0    0 )
+--        , Boid 26 (V2 176 406) (V2   0    1.5 )
+--        , Boid 27 (V2 087 307) (V2   2    0 )
+--        , Boid 28 (V2 198 208) (V2   0    2 )
+--        , Boid 29 (V2 409 109) (V2   0    0.4 )
+--        , Boid 30 (V2 310 510) (V2   2    2 )
+--        , Boid 31 (V2 511 171) (V2   2    0 )
+--        , Boid 32 (V2 612 192) (V2   1    2.3 )
+--        , Boid 33 (V2 713 013) (V2   1    0 )
+--        , Boid 34 (V2 314 114) (V2   2    1 )
+--        , Boid 35 (V2 415 015) (V2   2    0.1 )
+--        , Boid 36 (V2 516 216) (V2   2    1 )
+--        , Boid 37 (V2 317 017) (V2 (-1)   0 )
+--        , Boid 38 (V2 218 518) (V2 (-1) (-1))
+--        , Boid 39 (V2 119 019) (V2 (-3)   1 )
+--        ]
