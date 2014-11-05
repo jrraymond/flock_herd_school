@@ -63,10 +63,10 @@ data Player = Player { xP :: !Int
 
 
 drawBoid :: SDL.Renderer -> Boid -> IO ()
-drawBoid r (Boid _ (V2 x y) _) = drawRect r (Rect (floor x) (floor y) 5 5)
+drawBoid r (Boid _ (V2 x y) _ _) = drawRect r (Rect (floor x) (floor y) 5 5)
 
 drawBoid' :: SDL.Renderer -> Boid -> IO ()
-drawBoid' r (Boid _ (V2 px py) (V2 vx vy)) = do
+drawBoid' r (Boid _ (V2 px py) (V2 vx vy) _) = do
     let px' = floor px
         py' = floor py
         vx' = floor vx
@@ -115,7 +115,7 @@ genRandomBoids gen w h = f gen where
               (py,g'') = randomR (0,fromIntegral h) g'
               (vx,g''') = randomR (-2,2) g''
               (vy,g'''') = randomR (-2,2) g'''
-          in Boid (i - 1) (V2 px py) (V2 vx vy) : f g'''' (i - 1)
+          in Boid (i - 1) (V2 px py) (V2 vx vy) (V2 0 0) : f g'''' (i - 1)
 
 
 maybeReads :: Read a => String -> Maybe a
@@ -126,48 +126,3 @@ data Opts = Opts { nameOpt :: !String
                  , mouseOpt :: !Bool -- true to enable mouse, false to use arrow keys
                  , numBoidsOpt :: !Int -- number of boids
                  } deriving (Eq, Show)
-
-
-
---boids :: [Boid]
---boids = [ Boid 0  (V2 400 500) (V2   1    0.7 )
---        , Boid 1  (V2 301 401) (V2   1    1 )
---        , Boid 2  (V2 202 302) (V2   1    0 )
---        , Boid 3  (V2 503 203) (V2   1  (-1))
---        , Boid 4  (V2 604 104) (V2   0    1 )
---        , Boid 5  (V2 305 505) (V2   0    0 )
---        , Boid 6  (V2 206 406) (V2   0    1.5 )
---        , Boid 7  (V2 507 307) (V2   2    0 )
---        , Boid 8  (V2 608 208) (V2   0    2 )
---        , Boid 9  (V2 409 109) (V2   0    0.4 )
---        , Boid 10 (V2 310 510) (V2   2    2 )
---        , Boid 11 (V2 411 411) (V2   2    0 )
---        , Boid 12 (V2 212 312) (V2   1    2.3 )
---        , Boid 13 (V2 413 213) (V2   1    0 )
---        , Boid 14 (V2 514 114) (V2   2    1 )
---        , Boid 15 (V2 415 315) (V2   2    0.1 )
---        , Boid 16 (V2 616 216) (V2   2    1 )
---        , Boid 17 (V2 117 517) (V2 (-1)   0 )
---        , Boid 18 (V2 718 318) (V2 (-1) (-1))
---        , Boid 19 (V2 419 119) (V2 (-3)   1 )
---        , Boid 20 (V2 010 000) (V2   1    0.7 )
---        , Boid 21 (V2 029 401) (V2   1    1 )
---        , Boid 22 (V2 132 302) (V2   1    0 )
---        , Boid 23 (V2 043 203) (V2   1  (-1))
---        , Boid 24 (V2 154 104) (V2   0    1 )
---        , Boid 25 (V2 065 505) (V2   0    0 )
---        , Boid 26 (V2 176 406) (V2   0    1.5 )
---        , Boid 27 (V2 087 307) (V2   2    0 )
---        , Boid 28 (V2 198 208) (V2   0    2 )
---        , Boid 29 (V2 409 109) (V2   0    0.4 )
---        , Boid 30 (V2 310 510) (V2   2    2 )
---        , Boid 31 (V2 511 171) (V2   2    0 )
---        , Boid 32 (V2 612 192) (V2   1    2.3 )
---        , Boid 33 (V2 713 013) (V2   1    0 )
---        , Boid 34 (V2 314 114) (V2   2    1 )
---        , Boid 35 (V2 415 015) (V2   2    0.1 )
---        , Boid 36 (V2 516 216) (V2   2    1 )
---        , Boid 37 (V2 317 017) (V2 (-1)   0 )
---        , Boid 38 (V2 218 518) (V2 (-1) (-1))
---        , Boid 39 (V2 119 019) (V2 (-3)   1 )
---        ]

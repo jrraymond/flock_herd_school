@@ -6,7 +6,8 @@ import Vector2D
 
 data Boid = Boid { _idBd :: !Int
                  , _posBd :: !V2
-                 , _velBd :: !V2 } deriving (Show, Eq)
+                 , _velBd :: !V2
+                 , _aceBd :: !V2 } deriving (Show, Eq)
   --               , _maxV :: !Double
   --               , _aBd :: !Double
   --               , _sBd :: !Double
@@ -14,13 +15,13 @@ data Boid = Boid { _idBd :: !Int
 sepC :: Double
 sepC = 0.5
 alignC :: Double
-alignC = 2
+alignC = 1
 cohC :: Double
 cohC = 1
 nearC :: Double
-nearC = 50
+nearC = 5
 velMax :: Double
-velMax = 10
+velMax = 5
 avdC :: Double
 avdC = 0.5
 avdDst :: Double
@@ -30,7 +31,7 @@ step :: Double -> Double -> [Boid] -> [V2] -> [Boid]
 step w h bs ps = map (stepBoid w h bs ps nearC) bs
 
 stepBoid :: Double -> Double -> [Boid] -> [V2] -> Double -> Boid -> Boid
-stepBoid w h bs ps d b@(Boid i pos vel) = b' where
+stepBoid w h bs ps d b@(Boid i pos vel acel) = b' where
   -- | trace ("pos "++show pos++" vel "++show vel++" sV "++show sV++" aV"++show aV++" cV"++show cV++" v'"++show v'++" near "++show nears) False = undefined
   -- | otherwise = b' where
   bs' = delete b bs
@@ -39,12 +40,14 @@ stepBoid w h bs ps d b@(Boid i pos vel) = b' where
   aV = align (map _velBd nears)
   cV = coher (map _posBd nears) pos
   xV = avoid (map (sub pos) (filter (\x -> mag2 (sub pos x) < avdDst ** 2) ps))
-  v' = clamp velMax $ add5 sV aV cV vel xV
-  b' = Boid i (wrap w h $ add pos v') v'
+  a' = add5 sV aV cV acel xV
+  v' = clamp velMax $ add vel a'
+  b' = Boid i (wrap w h $ add pos v') v' a'
 
 {- Avoid collisions with neighboring boids position diffs -} 
 seperate :: [V2] -> V2
 seperate = scale sepC . foldl' add (V2 0 0)
+--seperate vs = scale (1 / fromIntegral (length vs)) $ foldl' add (V2 0 0) vs
 
 {- Match the velocity of neighboring boids -}
 align :: [V2] -> V2
