@@ -99,12 +99,12 @@ getGameOpts = do
     putStrLn "Enable mouse? (T/F): "
     m <- getLine
     let m' = head (m ++ " ") == 'T' -- hack to avoid partiality
-    putStrLn "Number of boids? (1-99): "
+    putStrLn "Number of boids? (1-1000): "
     b <- getLine
     let b' = case maybeReads b :: Maybe Int of
                Nothing -> 10
                Just i | i < 1 -> 1 
-                      | i > 499 -> 499
+                      | i > 1000 -> 1000
                       | otherwise -> i
     return $ Opts n m' b'
 
