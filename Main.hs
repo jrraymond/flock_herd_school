@@ -63,7 +63,7 @@ data Player = Player { xP :: !Int
 
 
 drawBoid :: SDL.Renderer -> Boid -> IO ()
-drawBoid r (Boid _ (V2 x y) _ _) = drawRect r (Rect (floor x) (floor y) 5 5)
+drawBoid r (Boid _ (V2 x y) _ _) = drawRect r (Rect (floor x) (floor y) 1 1)
 
 drawBoid' :: SDL.Renderer -> Boid -> IO ()
 drawBoid' r (Boid _ (V2 px py) (V2 vx vy) _) = do
@@ -104,7 +104,7 @@ getGameOpts = do
     let b' = case maybeReads b :: Maybe Int of
                Nothing -> 10
                Just i | i < 1 -> 1 
-                      | i > 99 -> 99
+                      | i > 499 -> 499
                       | otherwise -> i
     return $ Opts n m' b'
 
