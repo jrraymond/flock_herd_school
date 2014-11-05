@@ -8,11 +8,9 @@ module GraphicsManager
   , drawCircle
   , drawVector
   , getWindow
-  , drawStartMenu
   ) where
 
 import qualified Graphics.UI.SDL as SDL
-import Foreign.ForeignPtr
 import Foreign.Marshal.Alloc
 import Foreign.Marshal.Array
 import Foreign.C.Types
@@ -22,6 +20,7 @@ import Control.Monad
 import Data.Word
 import Data.Angle
 import Data.Function (on)
+import Data.Bits ((.|.))
 
 
 data KeyState = KeyState Bool Bool Bool Bool deriving (Eq, Show)
@@ -43,17 +42,11 @@ updateKeys ks _ _ = ks
 toCInt :: Int -> CInt
 toCInt = fromIntegral
 
-getWindow :: String -> Int -> Int -> IO SDL.Window
-getWindow s w h = do
+getWindow :: String -> Int -> Int -> [Word32] -> IO SDL.Window
+getWindow s w h flags = do
     s' <- newCString s
-    SDL.createWindow s' SDL.windowPosUndefined SDL.windowPosUndefined (toCInt w) (toCInt h) SDL.windowFlagResizable
+    SDL.createWindow s' SDL.windowPosUndefined SDL.windowPosUndefined (toCInt w) (toCInt h) $ foldr1 (.|.) flags
 
-drawStartMenu :: SDL.Renderer -> String -> Int -> Int -> IO ()
-drawStartMenu r s w h = do
-    _ <- SDL.setRenderDrawColor r 255 255 255 255
-    drawRect r (Rect 0 0 w h)
-    _ <- SDL.renderPresent r
-    SDL.delay 10000
 
 drawCircle :: SDL.Renderer -> Double -> Double -> Double -> IO ()
 drawCircle r cx cy rad = do
@@ -76,7 +69,10 @@ drawRect r (Rect x y w h) =
     in alloca $ \f -> poke f rect' >> SDL.renderFillRect r f >> return ()
 
 data Rect = Rect !Int !Int !Int !Int deriving (Eq, Show)
-data Event = Quit | Continue | Move Word32 SDL.Scancode deriving (Eq, Show)
+data Event = QuitEvent 
+           | ContinueEvent 
+           | MoveEvent Word32 SDL.Scancode
+           | ResizeEvent Word32 Word32 Word32 Int Int deriving (Eq, Show)
 
 
 {- alloca :: Storable a => (Ptr a -> IO b) -> IO b
@@ -94,14 +90,17 @@ pollEvent = alloca poll where
       r <- SDL.pollEvent e
       case r of 
           1 -> SDL.flushEvent SDL.eventTypeKeyDown >> liftM interpretEvent (peek e)
-          _ -> return Continue
+          _ -> return ContinueEvent
 
 interpretEvent :: SDL.Event -> Event
 interpretEvent e = 
     case e of
-       SDL.QuitEvent _ _                                   -> Quit
-       SDL.KeyboardEvent typ _ _ _ _ (SDL.Keysym code _ _) -> Move typ code
-       _                                                   -> Continue
+       SDL.QuitEvent _ _                                   -> QuitEvent
+       SDL.KeyboardEvent typ _ _ _ _ (SDL.Keysym code _ _) -> MoveEvent typ code
+       SDL.WindowEvent a b c n d1 d2 
+         | n == SDL.windowEventResized                     -> ResizeEvent a b c (fromIntegral d1) (fromIntegral d2)
+         | otherwise                                       -> ContinueEvent
+       _                                                   -> ContinueEvent
 --KeyboardEvent {eventType = 768
 --              , eventTimestamp = 16677
 --              , keyboardEventWindowID = 2

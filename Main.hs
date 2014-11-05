@@ -21,41 +21,39 @@ main = do
               _ -> return ()
     opts <- getGameOpts
     gen <- getStdGen
-    let boids = genRandomBoids gen wWd wHt (numBoidsOpt opts)
+    let boids = genRandomBoids gen 600 600 (numBoidsOpt opts)
     _ <- SDL.init SDL.initFlagEverything
     n <- getProgName
-    w <- getWindow n wWd wHt
+    w <- getWindow n 600 600 [SDL.windowFlagResizable]
     r <- SDL.createRenderer w (-1) SDL.rendererFlagAccelerated
-    _ <- SDL.renderSetLogicalSize r (fromIntegral wWd) (fromIntegral wHt)
     _ <- SDL.setRenderDrawColor r 0 0 0 255
     _ <- SDL.renderClear r
     _ <- SDL.renderPresent r
-    loop w r (World (Player (wWd `div` 2) (wHt `div` 2) 10 10) boids (KeyState False False False False))
+    loop w r (World (Player 300 300 10 10) boids (KeyState False False False False) 600 600)
     SDL.quit
-    putStrLn "Game Over"
+    putStrLn "Game Over\n\n"
     main
 
 loop :: SDL.Window -> SDL.Renderer -> World -> IO ()
-loop w r world@(World p bs ks) = do
-    SDL.delay 50
+loop w r world@(World p bs ks wd ht) = do
+    SDL.delay 10
     ne <- pollEvent
     case ne of
-        Quit           -> return ()
-        Move typ key   -> let bs' = step (fromIntegral wWd) (fromIntegral wHt) bs [V2 (fromIntegral (xP (playerW w'))) (fromIntegral (yP (playerW w')))]
-                              w' = move (World p bs' $ updateKeys ks typ key) 
-                          in render r w' >> loop w r w'
-        Continue       -> let bs' = step (fromIntegral wWd) (fromIntegral wHt) bs [V2 (fromIntegral (xP (playerW world))) (fromIntegral (yP (playerW world)))]
-                              w' = World p bs' ks
-                          in render r w' >> loop w r w'
+        QuitEvent         -> return ()
+        ResizeEvent a b c wd' ht' -> putStrLn (show a ++ "\t" ++ show b ++ "\t" ++ show c) >> loop w r (World p bs ks wd' ht')
+        MoveEvent typ key -> let bs' = step (fromIntegral wd) (fromIntegral ht) bs [V2 (fromIntegral (xP (playerW w'))) (fromIntegral (yP (playerW w')))]
+                                 w' = move (World p bs' (updateKeys ks typ key) wd ht)
+                             in render r w' >> loop w r w'
+        ContinueEvent     -> let bs' = step (fromIntegral wd) (fromIntegral ht) bs [V2 (fromIntegral (xP (playerW world))) (fromIntegral (yP (playerW world)))]
+                                 w' = World p bs' ks wd ht
+                             in render r w' >> loop w r w'
 
-wWd :: Int
-wWd = 800
-wHt :: Int
-wHt = 600
 
 data World = World { playerW :: !Player
                    , boidsW :: ![Boid]
                    , keysW :: !KeyState
+                   , widthW :: !Int
+                   , heightW :: !Int
                    } deriving Show
 data Player = Player { xP :: !Int
                      , yP :: !Int
@@ -78,13 +76,13 @@ drawBoid' r (Boid _ (V2 px py) (V2 vx vy)) = do
     drawRect r (Rect px' py' 5 5)
 
 move :: World -> World 
-move (World (Player x y wd ht) bs ks@(KeyState r l d u)) = World p' bs ks where
-  p' = Player (x' `mod` wWd) (y' `mod` wHt) wd ht
+move (World (Player x y wd ht) bs ks@(KeyState r l d u) wW hW) = World p' bs ks wW hW where
+  p' = Player (x' `mod` wW) (y' `mod` hW) wd ht
   x' | r = x + 5 | l = x - 5 | otherwise = x
   y' | d = y + 5 | u = y - 5 | otherwise = y
 
 render :: SDL.Renderer -> World -> IO ()
-render r (World (Player x y w h) bs _) = do
+render r (World (Player x y w h) bs _ _ _) = do
     _ <- SDL.setRenderDrawColor r 0 0 0 255
     _ <- SDL.renderClear r
     _ <- SDL.setRenderDrawColor r 255 255 255 255 
@@ -100,12 +98,14 @@ getGameOpts = do
     n <- getLine
     putStrLn "Enable mouse? (T/F): "
     m <- getLine
-    let m' = if head (m ++ " ") == 'T' then True else False -- hack to avoid partiality
+    let m' = head (m ++ " ") == 'T' -- hack to avoid partiality
     putStrLn "Number of boids? (1-99): "
     b <- getLine
     let b' = case maybeReads b :: Maybe Int of
                Nothing -> 10
-               Just i -> if i < 1 then 1 else if i > 99 then 99 else i
+               Just i | i < 1 -> 1 
+                      | i > 99 -> 99
+                      | otherwise -> i
     return $ Opts n m' b'
 
 genRandomBoids :: StdGen -> Int -> Int -> Int -> [Boid]
