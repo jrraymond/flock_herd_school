@@ -24,6 +24,7 @@ import Data.Bits ((.|.))
 
 
 data KeyState = KeyState Bool Bool Bool Bool deriving (Eq, Show)
+
 updateKeys :: KeyState -> Word32 -> SDL.Scancode -> KeyState
 updateKeys ks@(KeyState r l d u) 768 key
   | key == SDL.scancodeRight = KeyState True l d u
@@ -41,6 +42,7 @@ updateKeys ks _ _ = ks
 
 toCInt :: Int -> CInt
 toCInt = fromIntegral
+
 
 getWindow :: String -> Int -> Int -> [Word32] -> IO SDL.Window
 getWindow s w h flags = do
@@ -61,7 +63,7 @@ drawVector r px py vx vy =
         p1y = toCInt py
         p2x = p1x + toCInt vx
         p2y = p1y + toCInt vy
-    in SDL.renderDrawLine r p1x p1y p2x p2y >> return ()
+    in void $ SDL.renderDrawLine r p1x p1y p2x p2y
 
 drawRect :: SDL.Renderer -> Rect -> IO ()
 drawRect r (Rect x y w h) = 
@@ -72,6 +74,7 @@ data Rect = Rect !Int !Int !Int !Int deriving (Eq, Show)
 data Event = QuitEvent 
            | ContinueEvent 
            | MoveEvent Word32 SDL.Scancode
+           | MouseEvent Int Int Int Int
            | ResizeEvent Word32 Word32 Word32 Int Int deriving (Eq, Show)
 
 
@@ -97,6 +100,7 @@ interpretEvent e =
     case e of
        SDL.QuitEvent _ _                                   -> QuitEvent
        SDL.KeyboardEvent typ _ _ _ _ (SDL.Keysym code _ _) -> MoveEvent typ code
+       SDL.MouseMotionEvent _ _ _ _ _ x y dx dy            -> MouseEvent (fromIntegral x) (fromIntegral y) (fromIntegral dx) (fromIntegral dy)
        SDL.WindowEvent a b c n d1 d2 
          | n == SDL.windowEventResized                     -> ResizeEvent a b c (fromIntegral d1) (fromIntegral d2)
          | otherwise                                       -> ContinueEvent

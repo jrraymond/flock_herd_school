@@ -29,23 +29,26 @@ main = do
     _ <- SDL.setRenderDrawColor r 0 0 0 255
     _ <- SDL.renderClear r
     _ <- SDL.renderPresent r
-    loop w r (World (Player 300 300 10 10) boids (KeyState False False False False) 600 600)
+    loop w r (World (Player 300 300 10 10) boids (KeyState False False False False) 600 600 (mouseOpt opts))
     SDL.quit
     putStrLn "Game Over\n\n"
     main
 
 loop :: SDL.Window -> SDL.Renderer -> World -> IO ()
-loop w r world@(World p bs ks wd ht) = do
+loop w r world@(World p bs ks wd ht mouse) = do
     SDL.delay 10
     ne <- pollEvent
     case ne of
         QuitEvent         -> return ()
-        ResizeEvent a b c wd' ht' -> putStrLn (show a ++ "\t" ++ show b ++ "\t" ++ show c) >> loop w r (World p bs ks wd' ht')
+        ResizeEvent a b c wd' ht' -> putStrLn (show a ++ "\t" ++ show b ++ "\t" ++ show c) >> loop w r (World p bs ks wd' ht' mouse)
         MoveEvent typ key -> let bs' = step (fromIntegral wd) (fromIntegral ht) bs [V2 (fromIntegral (xP (playerW w'))) (fromIntegral (yP (playerW w')))]
-                                 w' = move (World p bs' (updateKeys ks typ key) wd ht)
-                             in render r w' >> loop w r w'
+                                 w' = move (World p bs' (updateKeys ks typ key) wd ht mouse)
+                             in if mouse then loop w r world else render r w' >> loop w r w'
+        MouseEvent x y _ _ -> let bs' = step (fromIntegral wd) (fromIntegral ht) bs [V2 (fromIntegral x) (fromIntegral y)]
+                                  w' = World (Player x y (wP p) (hP p)) bs' ks wd ht mouse
+                              in if not mouse then loop w r world else render r w' >> loop w r w'
         ContinueEvent     -> let bs' = step (fromIntegral wd) (fromIntegral ht) bs [V2 (fromIntegral (xP (playerW world))) (fromIntegral (yP (playerW world)))]
-                                 w' = World p bs' ks wd ht
+                                 w' = World p bs' ks wd ht mouse
                              in render r w' >> loop w r w'
 
 
@@ -54,6 +57,7 @@ data World = World { playerW :: !Player
                    , keysW :: !KeyState
                    , widthW :: !Int
                    , heightW :: !Int
+                   , mouseW :: !Bool
                    } deriving Show
 data Player = Player { xP :: !Int
                      , yP :: !Int
@@ -76,13 +80,13 @@ drawBoid' r (Boid _ (V2 px py) (V2 vx vy) _) = do
     drawRect r (Rect px' py' 5 5)
 
 move :: World -> World 
-move (World (Player x y wd ht) bs ks@(KeyState r l d u) wW hW) = World p' bs ks wW hW where
+move (World (Player x y wd ht) bs ks@(KeyState r l d u) wW hW mouse) = World p' bs ks wW hW mouse where
   p' = Player (x' `mod` wW) (y' `mod` hW) wd ht
   x' | r = x + 5 | l = x - 5 | otherwise = x
   y' | d = y + 5 | u = y - 5 | otherwise = y
 
 render :: SDL.Renderer -> World -> IO ()
-render r (World (Player x y w h) bs _ _ _) = do
+render r (World (Player x y w h) bs _ _ _ _) = do
     _ <- SDL.setRenderDrawColor r 0 0 0 255
     _ <- SDL.renderClear r
     _ <- SDL.setRenderDrawColor r 255 255 255 255 
