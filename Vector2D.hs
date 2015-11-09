@@ -13,6 +13,7 @@ module Vector2D
  , mag
  , wrap
  , clamp
+ , limit
  ) where
 
 import Control.Monad (join)
@@ -57,10 +58,16 @@ wrap w h (V2 x y) = let x' | x > w = 0 | x < 0 = w | otherwise = x
                         y' | y > h = 0 | y < 0 = h | otherwise = y
                     in V2 x' y'
 
-clamp :: Double -> V2 -> V2
-clamp l v
+limit :: Double -> V2 -> V2
+limit l v
   | mag2 v > l ** 2 = scale l $ normalize v
   | otherwise = v
+
+clamp :: Double -> Double -> Double -> Double -> V2 -> V2
+clamp lx ux ly uy (V2 x y) = 
+    let x' | x < lx = lx | x > ux = ux | otherwise = x
+        y' | y < ly = ly | y > uy = uy | otherwise = y
+    in V2 x' y'
 
 v2map :: (Double -> Double) -> V2 -> V2
 v2map f (V2 x y) = V2 (f x) (f y)

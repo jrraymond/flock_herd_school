@@ -26,19 +26,20 @@ avdC = 1
 avdDst :: Double
 avdDst = 2 * nearC
 
-step :: Double -> Double -> [Boid] -> [V2] -> [Boid]
-step w h bs ps = map (stepBoid w h bs ps nearC) bs
+{- width height boids predators obstacles goals -}
+step :: Double -> Double -> [Boid] -> [V2] -> [Obj] -> [Obj] -> [Boid]
+step w h bs ps os gs = map (stepBoid w h bs ps os gs nearC) bs
 
-stepBoid :: Double -> Double -> [Boid] -> [V2] -> Double -> Boid -> Boid
-stepBoid w h bs ps d b@(Boid i pos vel acel) = b' where
+stepBoid :: Double -> Double -> [Boid] -> [V2] -> [Obj] -> [Obj] -> Double -> Boid -> Boid
+stepBoid w h bs ps os gs d b@(Boid i pos vel acel) = b' where
   bs' = delete b bs
   nears = filter (\x -> mag2 (sub pos (_posBd x)) < d ** 2) bs'
-  sV = scale sepC $ seperate bs' pos (d ** 2 / 4) --(map (sub pos . _posBd) nears)
+  sV = scale sepC $ seperate bs' pos (d ** 2 / 4)
   aV = align (map _velBd nears)
   cV = coher (map _posBd nears) pos
   xV = avoid (map (sub pos) (filter (\x -> mag2 (sub pos x) < avdDst ** 2) ps))
-  a' = clamp acelMax $ add5 sV aV cV acel xV
-  v' = clamp velMax $ add vel a'
+  a' = limit acelMax $ add5 sV aV cV acel xV
+  v' = limit velMax $ add vel a'
   b' = Boid i (wrap w h $ add pos v') v' a'
 
 {- Avoid collisions with neighboring boids position diffs -} 
@@ -78,3 +79,5 @@ avoid ps =
 
 getCenter :: [V2] -> V2
 getCenter ps = scale (1 / fromIntegral (length ps)) $ foldl' add (V2 0 0) ps
+
+data Obj = Sphere V2 Double deriving (Show, Eq)
